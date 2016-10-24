@@ -62,7 +62,33 @@ int main (int argc, char *argv[]) {
 		}
 	}
 	if (values.size() >= 2) {
-		// TODO: find the sequence length here.
+		struct Sequence {
+			size_t count;
+
+			std::vector<double>::size_type location;
+		};
+
+		Sequence current = { 1, 0 }, max = { 0, 0 };
+		for (std::vector<double>::size_type i = 1, imax = values.size(); i < imax; ++i) {
+			if (values[i] >= values[i - 1]) {
+				current.count++;
+			} else {
+				if (current.count > max.count) {
+					max = current;
+				}
+				current.count = 1;
+				current.location = i;
+			}
+		}
+		if (current.count > max.count) {
+			max = current;
+		}
+		std::cout << max.count;
+
+		if (max.count > 0) {
+			std::cout << ' ' << (max.location + 1);
+		}
+		std::cout << std::endl;
 	} else {
 		return ERROR;
 	}

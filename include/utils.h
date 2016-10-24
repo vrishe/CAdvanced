@@ -7,6 +7,11 @@
 #define CONCAT_(a, b) a##b
 #define CONCAT(a, b) CONCAT_(a, b)
 
+#define FOR_EACH(it, container) \
+	for (auto it = (container).begin(), it##_end = (container).end(); it != it##_end; ++it)
+
+// #define FOR_EACH(it, container, type) \
+// 	for (type::iterator it = (container).begin(), it##_end = (container).end(); it != it##_end; ++it)
 
 namespace utils {
 
