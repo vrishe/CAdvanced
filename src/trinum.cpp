@@ -22,7 +22,6 @@ int main() {
 	std::cin >> input::read(t);
 
 	if (!std::cin.fail() && trinum(t, result)) {
-
 		std::cout << result;
 	} else {
 		std::cout << 0;	

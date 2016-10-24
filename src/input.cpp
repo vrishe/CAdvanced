@@ -1,49 +1,102 @@
 #include "input.h"
+#include "countof.h"
 
 #include <cerrno>
 #include <cstdlib>
 #include <cstring>
 #include <string>
 
+
 namespace input {
 
-	bool read_impl(const char *str, size_t str_size, double &result) {
-		if (str_size > 0) {
-			bool negative = false;
+	namespace _double {
 
-			if (str_size > 1) {
-				char inputChar = *str;
+		struct MatchRule {
 
-				if (inputChar == '+'
-					|| (negative = inputChar == '-')) {
+			bool (*matcher_func)(char character, size_t count);
 
-					--str_size;
+			size_t next_rule;
+
+		};
+
+		static bool digit_matcher(char character, size_t count) {
+			return '0' <= character && character <= '9';
+		}
+
+		static bool exponent_matcher(char character, size_t count) {
+			return character == 'e' || character == 'E';
+		}
+
+		static bool dot_matcher(char character, size_t count) {
+			return character == '.';
+		}
+
+		static bool sign_matcher(char character, size_t count) {
+			return count > 1 && (character == '-' || character == '+');
+		}
+
+
+		bool read(const char *str, size_t str_size, double &result) {
+			static const MatchRule rules[] = { 
+				{ sign_matcher, 1 },
+				{ digit_matcher, 1 },
+				{ dot_matcher, 3 },
+				{ digit_matcher, 3 },
+				{ exponent_matcher, 5 },
+				{ sign_matcher, 6 },
+				{ digit_matcher, 6 }
+			};
+			std::string input;
+
+			size_t index = 0;
+			while (str_size > 0) {
+				bool matches = false;
+
+				do {
+					if (rules[index].matcher_func(*str, str_size)) {
+						index = rules[index].next_rule;
+						matches = true;
+
+						break;
+					}
+				} while (++index < countof(rules));
+
+				if (matches) {
+					input.push_back(*str);
+
 					++str;
+					--str_size;
+				} else {
+					return false;
 				}
 			}
+			result = strtod(input.c_str(), NULL);
+
+			return true;
 		}
-		return false;
 	}
+
 
 	bool read(const char *str, double &result) {
-		return read_impl(str, strlen(str), result);
+		return _double::read(str, strlen(str), result);
 	}
 
 
-	bool read_impl(const char *str, size_t str_size, long long &result) {
-		if (str_size > 0) {
-			long long rank = 1;
+	namespace _long_long {
 
+		bool read(const char *str, size_t str_size, long long &result) {
 			static const char validChars[] = "0123456789+";
-			for (size_t i = str_size - 2; i < str_size; --i) {
+
+			long long output = 0, rank = 1;
+			for (size_t i = str_size - 1; i < str_size; --i) {
 				bool correct = false;
 
-				for (size_t j = 0, jmax = sizeof(validChars) - 1; j < jmax; ++j) {
+				for (size_t j = 0, jmax = countof(validChars) - 1; j < jmax; ++j) {
 					char inputChar = str[i];
 
 					if (inputChar == validChars[j]) {
 						if (j < 10) {
-							result += j * rank;
+							output += j * rank;
 							rank *= 10;
 
 							correct = true;
@@ -59,13 +112,14 @@ namespace input {
 					return false;
 				}
 			}
+			result = output;
+
 			return true;
 		}
-		return false;
 	}
 
 	bool read(const char *str, long long &result) {
-		return read_impl(str, strlen(str), result);
+		return _long_long::read(str, strlen(str), result);
 	}
 
 
@@ -74,25 +128,23 @@ namespace input {
 
 		char input[] = "+9223372036854775807";
 		size_t countRead = src
-			.getline(input, sizeof(input))
+			.getline(input, countof(input))
 			.gcount();
 
 		src.clear();
 
-		if (!read_impl(input, countRead, result)) {
+		if (countRead <= 0 || !_long_long::read(input, countRead - 1, result)) {
 			src.setstate(std::ios_base::failbit);
 		}
 		return src;
 	}
 
 
-	namespace {
-		std::istream &read_impl(std::istream &src, long long *result) {
-			return read(src, *result);
-		}
+	std::istream &read_manip(std::istream &src, long long *result) {
+		return read(src, *result);
 	}
 
 	ISMANIP<long long*> read(long long &result) {
-		return ISMANIP<long long*>(read_impl, &result);
+		return ISMANIP<long long*>(read_manip, &result);
 	}
 }
