@@ -13,66 +13,71 @@ namespace input {
 
 		struct MatchRule {
 
-			bool (*matcher_func)(char character, size_t count);
+			bool (*matcher_func)(char character);
 
 			size_t next_rule;
 
+			size_t exit_rule;
+
 		};
 
-		static bool digit_matcher(char character, size_t count) {
+		static bool digit_matcher(char character) {
 			return '0' <= character && character <= '9';
 		}
 
-		static bool exponent_matcher(char character, size_t count) {
+		static bool exponent_matcher(char character) {
 			return character == 'e' || character == 'E';
 		}
 
-		static bool dot_matcher(char character, size_t count) {
+		static bool dot_matcher(char character) {
 			return character == '.';
 		}
 
-		static bool sign_matcher(char character, size_t count) {
-			return count > 1 && (character == '-' || character == '+');
+		static bool sign_matcher(char character) {
+			return character == '-' || character == '+';
 		}
 
 
 		bool read(const char *str, size_t str_size, double &result) {
-			static const MatchRule rules[] = { 
-				{ sign_matcher, 1 },
-				{ digit_matcher, 1 },
-				{ dot_matcher, 3 },
-				{ digit_matcher, 3 },
-				{ exponent_matcher, 5 },
-				{ sign_matcher, 6 },
-				{ digit_matcher, 6 }
-			};
-			std::string input;
+			if (str_size) {
+				std::string input;
+				{
+					static const MatchRule rules[] = { 
+						{ sign_matcher, 1, 2 },				// 0
+						{ digit_matcher, 2, size_t(-1) },	// 1
+						{ digit_matcher, 2, 3 },			// 2
+						{ dot_matcher, 4, 5 },				// 3
+						{ digit_matcher, 5, size_t(-1) },	// 4
+						{ digit_matcher, 5, 6 },			// 5
+						{ exponent_matcher, 7, 9 },			// 6
+						{ sign_matcher, 8, 9 },				// 7
+						{ digit_matcher, 9, size_t(-1) },	// 8
+						{ digit_matcher, 9, size_t(-1) }	// 9
+					};
+					for (size_t i = 0; str_size > 0;) {
+						for (;;) {
+							const MatchRule &rule = rules[i];
 
-			size_t index = 0;
-			while (str_size > 0) {
-				bool matches = false;
+							if (rule.matcher_func(*str)) {
+								input.push_back(*str++);
+								i = rule.next_rule;
+								--str_size;
 
-				do {
-					if (rules[index].matcher_func(*str, str_size)) {
-						index = rules[index].next_rule;
-						matches = true;
-
-						break;
+								break;
+							} else {
+								i = rule.exit_rule;
+							}
+							if (i >= countof(rules)) {
+								return false;
+							}
+						}
 					}
-				} while (++index < countof(rules));
-
-				if (matches) {
-					input.push_back(*str);
-
-					++str;
-					--str_size;
-				} else {
-					return false;
 				}
-			}
-			result = strtod(input.c_str(), NULL);
+				result = strtod(input.c_str(), NULL);
 
-			return true;
+				return true;
+			}
+			return false;
 		}
 	}
 
@@ -87,34 +92,37 @@ namespace input {
 		bool read(const char *str, size_t str_size, long long &result) {
 			static const char validChars[] = "0123456789+";
 
-			long long output = 0, rank = 1;
-			for (size_t i = str_size - 1; i < str_size; --i) {
-				bool correct = false;
+			if (str_size) {
+				long long output = 0, rank = 1;
+				for (size_t i = str_size - 1; i < str_size; --i) {
+					bool correct = false;
 
-				for (size_t j = 0, jmax = countof(validChars) - 1; j < jmax; ++j) {
-					char inputChar = str[i];
+					for (size_t j = 0, jmax = countof(validChars) - 1; j < jmax; ++j) {
+						char inputChar = str[i];
 
-					if (inputChar == validChars[j]) {
-						if (j < 10) {
-							output += j * rank;
-							rank *= 10;
+						if (inputChar == validChars[j]) {
+							if (j < 10) {
+								output += j * rank;
+								rank *= 10;
 
-							correct = true;
-							break;
-						}
-						else if (i == 0) {
-							correct = true;
-							break;
+								correct = true;
+								break;
+							}
+							else if (i == 0) {
+								correct = true;
+								break;
+							}
 						}
 					}
+					if (!correct) {
+						return false;
+					}
 				}
-				if (!correct) {
-					return false;
-				}
-			}
-			result = output;
+				result = output;
 
-			return true;
+				return true;
+			}
+			return false;
 		}
 	}
 
