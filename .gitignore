@@ -1,1 +1,4 @@
 *.stackdump
+*.sublime-workspace
+
+/bin
